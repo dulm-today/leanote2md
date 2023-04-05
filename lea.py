@@ -2,14 +2,17 @@
 # Wrapper for Leanote API v1
 
 import requests as req
+import re
+from utils import *
 
 LEANOTE_API_BASE = 'https://leanote.com/api'
 token = ''
 
-def login(email, pwd):
+def login(host, email, pwd):
     """Login in Leanote.
 
     Args:
+        host: Host of Leanote.
         email: Email of your account.
         pwd: Password of your account.
 
@@ -20,6 +23,9 @@ def login(email, pwd):
         'email': email,
         'pwd':   pwd,
     }
+    global LEANOTE_API_BASE
+    if host and host != '':
+        LEANOTE_API_BASE = host + '/api'
     r = req.get(LEANOTE_API_BASE + '/auth/login', params=payload)
     if r.status_code != req.codes.ok:
         print('Login fail, please try again.')
@@ -102,5 +108,31 @@ def get_image(image_id):
     if r.status_code != req.codes.ok:
         print('Failed to get image, please try again.')
         return ''
-    return r.content
-    
+    fname = ''
+    if "Content-Disposition" in r.headers.keys():
+        fname = re.findall('filename="(.+)"', r.headers["Content-Disposition"])[0]
+        fname = fname.encode('ISO-8859-1').decode('utf-8')
+    return r.content, fname
+
+def get_attach(file_id):
+    """Get attachment by @file_id.
+
+    Args:
+        file_id: Id of attachment.
+
+    Returns:
+        Image bytes
+    """
+    payload = {
+        'token': token,
+        'fileId': file_id,
+    }
+    r = req.get(LEANOTE_API_BASE + '/file/getAttach', params=payload)
+    if r.status_code != req.codes.ok:
+        print('Failed to get attachment, please try again.')
+        return ''
+    fname = ''
+    if "Content-Disposition" in r.headers.keys():
+        fname = re.findall('filename="(.+)"', r.headers["Content-Disposition"])[0]
+        fname = fname.encode('ISO-8859-1').decode('utf-8')
+    return r.content, fname
